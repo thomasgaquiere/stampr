@@ -36,4 +36,3 @@ head(STGroup)
 
 }
 \keyword{stamp}
-

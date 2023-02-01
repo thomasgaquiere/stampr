@@ -4,7 +4,7 @@
 \alias{stamp}
 \title{Spatial temporal analysis of moving polygons}
 \usage{
-stamp(T1, T2, dc = 0, direction = FALSE, distance = FALSE, ...)
+stamp(T1, T2, dc = 0, direction = FALSE, distance = FALSE, cores = 1, ...)
 }
 \arguments{
 \item{T1}{a \code{SpatialPolygonsDataFrame} object of polygons from time 1.}
@@ -65,11 +65,8 @@ The \code{stamp} function can be used to perform spatial temporal analysis of mo
 \references{
 Robertson, C., Nelson, T., Boots, B., and Wulder, M. (2007) STAMP: Spatial-temporal analysis of moving polygons.
  \emph{Journal of Geographical Systems}, 9:207-227.
-Long, J., Robertson, C., and Nelson, T. (2018) stampr: Spatial-temporal analysis of moving polygons in R.
- \emph{Journal of Statistical Software}, 84:1.
 }
 \seealso{
 stamp.direction stamp.distance stamp.shape stamp.map stamp.group.summary
 }
 \keyword{stamp}
-

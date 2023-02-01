@@ -20,7 +20,10 @@ Imports:
     deldir,
     spdep,
     grDevices,
-    methods
+    methods,
+    parallel,
+    doParallel,
+    foreach
 Suggests:
     igraph
-RoxygenNote: 5.0.0
+RoxygenNote: 7.2.1

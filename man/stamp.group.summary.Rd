@@ -27,4 +27,3 @@ The function \code{stamp.group.summary} compiles summary statistics for each STA
  \code{data.frame} with just the group IDs as the only column.
 }
 \keyword{stamp}
-

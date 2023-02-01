@@ -83,4 +83,3 @@ Baker, W.L. and Cai, Y. (1992) The r.le programs for multiscale analysis of land
 stamp
 }
 \keyword{stamp}
-

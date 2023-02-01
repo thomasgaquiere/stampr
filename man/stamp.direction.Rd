@@ -80,4 +80,3 @@ Skiadopoulos, S. Giannoukos, C., Sarkas, N., Vassiliadis, P., Sellis, T., and Ko
 stamp, stamp.distance, stamp.shape
 }
 \keyword{stamp}
-

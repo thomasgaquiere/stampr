@@ -89,8 +89,8 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   res <- vector(mode="list", length=length(slot(T1, "polygons")))
   dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
-  cl <- parallel::makeCluster(cores)
-  doParallel::registerDoParallel(cl)
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
   foreach(i = 1:length(seq(along=res))) %dopar% {
     gd <- gDifference(T1[i,],T2,drop_lower_td=TRUE)
     res[[i]] <- gd 
@@ -121,8 +121,8 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   res <- vector(mode="list", length=length(slot(T2, "polygons")))
   dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
-  cl <- parallel::makeCluster(cores)
-  doParallel::registerDoParallel(cl)
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
   foreach(i= 1:length(seq(along=res))) %dopar%{
     gd <- gDifference(T2[i,],T1,drop_lower_td=TRUE)
     res[[i]] <- gd

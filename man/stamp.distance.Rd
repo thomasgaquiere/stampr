@@ -46,4 +46,3 @@ Hausdorff Distance: \url{http://en.wikipedia.org/wiki/Hausdorff_distance}
 stamp stamp.direction stamp.shape gDistance
 }
 \keyword{stamp}
-

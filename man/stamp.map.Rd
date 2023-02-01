@@ -42,4 +42,3 @@ stamp.map(ch, "LEV4")
 }
 \keyword{plot}
 \keyword{stamp}
-

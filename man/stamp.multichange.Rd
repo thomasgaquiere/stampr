@@ -4,8 +4,13 @@
 \alias{stamp.multichange}
 \title{run stamp function for multiple years of polygons at once}
 \usage{
-stamp.multichange(polys, changeByRow = TRUE, changeByField = FALSE,
-  changeField = "", ...)
+stamp.multichange(
+  polys,
+  changeByRow = TRUE,
+  changeByField = FALSE,
+  changeField = "",
+  ...
+)
 }
 \arguments{
 \item{polys}{a \code{SpatialPolygonsDataFrame} wiht 2+ years of data to run through the \code{stamp} function.}
@@ -40,4 +45,3 @@ STGroup <- stamp.stgroup.summary(ch)
 head(STGroup)
 }
 \keyword{stamp}
-

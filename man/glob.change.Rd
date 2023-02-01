@@ -32,4 +32,3 @@ The function \code{glob.change} computes a set of three global change metrics fo
  \deqn{\mathtt{AvgAreaRatio} = \frac{\mathtt{AreaRatio}}{\mathtt{NumRatio}} = \frac{\frac{A(T2)}{A(T1)}}{\frac{\#(T1)}{\#(T2)}}}{AvgAreaRatio=AreaRatio/NumRatio}
 }
 \keyword{metrics}
-

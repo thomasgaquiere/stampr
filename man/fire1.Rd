@@ -4,7 +4,9 @@
 \name{fire1}
 \alias{fire1}
 \title{Forest Fire dataset}
-\format{\code{fire1} --- a \code{SpatialPolygonsDataFrame} with polygons representing the location of forest fire.}
+\format{
+\code{fire1} --- a \code{SpatialPolygonsDataFrame} with polygons representing the location of forest fire.
+}
 \source{
 Simulated data
 }
@@ -20,4 +22,3 @@ plot(fire2,border=2,add=TRUE)
 }
 \keyword{datasets,}
 \keyword{testing}
-
