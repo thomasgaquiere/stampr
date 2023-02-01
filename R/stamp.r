@@ -64,7 +64,7 @@
 #
 # ---- End of Documentation ----
 
-stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE, ...){ 
+stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
   # intersection b/w T1 and T2
   if (!exists("ID", T1@data))
       stop("Need a unique 'ID' column.")
@@ -89,7 +89,9 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE, ...){
   res <- vector(mode="list", length=length(slot(T1, "polygons")))
   dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
-  for (i in seq(along=res)) {
+  cl <- parallel::makeCluster(cores)
+  doParallel::registerDoParallel(cl)
+  foreach(i = 1:length(seq(along=res))) %dopar% {
     gd <- gDifference(T1[i,],T2,drop_lower_td=TRUE)
     res[[i]] <- gd 
     if (!is.null(gd)){                                          
@@ -97,6 +99,8 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE, ...){
       dfD1[i,1] <- as.numeric(row.names(T1[i,]))
     }
   }
+  
+  parallel::stopCluster(cl)
   #Get rid of problem scenarios
   ind <- which(is.na(dfD1$ID1) & is.na(dfD1$ID2))
   if (length(ind) > 0){
@@ -117,7 +121,9 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE, ...){
   res <- vector(mode="list", length=length(slot(T2, "polygons")))
   dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
-  for (i in seq(along=res)) {
+  cl <- parallel::makeCluster(cores)
+  doParallel::registerDoParallel(cl)
+  foreach(i= 1:length(seq(along=res))) %dopar%{
     gd <- gDifference(T2[i,],T1,drop_lower_td=TRUE)
     res[[i]] <- gd
     if (!is.null(gd)){                                          
@@ -125,6 +131,7 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE, ...){
       dfD2[i,2] <- as.numeric(row.names(T2[i,]))
     }
   }
+  stopCluster(cl)
   #Get rid of problem scenarios
   ind <- which(is.na(dfD2$ID1) & is.na(dfD2$ID2))
   if (length(ind) > 0){
