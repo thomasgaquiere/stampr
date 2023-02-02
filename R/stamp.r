@@ -1,7 +1,10 @@
 # ---- roxygen documentation ----
 #
 #' @title Spatial temporal analysis of moving polygons
-#'
+#'@import doParallel
+#'@import parallel
+#'@import foreach
+#'@import sf
 #' @description
 #' This function generates a \code{SpatialPolygonsDataFrame} that can be used for spatial temporal analysis of moving polygons
 #' as described in the paper Robertson et al. (2007).
@@ -67,7 +70,7 @@
 stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
   # intersection b/w T1 and T2
   if (!exists("ID", T1@data))
-      stop("Need a unique 'ID' column.")
+    stop("Need a unique 'ID' column.")
   
   if (!exists("ID", T2@data))
     stop("Need a unique 'ID' column.")
@@ -91,16 +94,18 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   #This is slow, can we improve?
   cl <- makeCluster(cores)
   registerDoParallel(cl)
-  foreach(i = 1:length(seq(along=res))) %dopar% {
-    gd <- gDifference(T1[i,],T2,drop_lower_td=TRUE)
+  res <- foreach(i =1:length(seq(along=res))) %dopar%{
+    gd <- rgeos::gDifference(T1[i,],T2,drop_lower_td=TRUE)
     res[[i]] <- gd 
-    if (!is.null(gd)){                                          
+    
+  }
+  for (i in seq(along=res)) {
+    if (!is.null(res[[i]])){                                          
       row.names(res[[i]]) <- paste(i, row.names(res[[i]]), sep="_")    #I don't know what exactly this does?
       dfD1[i,1] <- as.numeric(row.names(T1[i,]))
-    }
-  }
+    }}
   
-  parallel::stopCluster(cl)
+  stopCluster(cl)
   #Get rid of problem scenarios
   ind <- which(is.na(dfD1$ID1) & is.na(dfD1$ID2))
   if (length(ind) > 0){
@@ -123,13 +128,16 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   #This is slow, can we improve?
   cl <- makeCluster(cores)
   registerDoParallel(cl)
-  foreach(i= 1:length(seq(along=res))) %dopar%{
-    gd <- gDifference(T2[i,],T1,drop_lower_td=TRUE)
+  res <- foreach(i= 1:length(seq(along=res))) %dopar%{
+    gd <- rgeos::gDifference(T2[i,],T1,drop_lower_td=TRUE)
     res[[i]] <- gd
-    if (!is.null(gd)){                                          
+  }
+  for (i in seq(along=res)) {
+    if (!is.null(res[[i]])){                                          
       row.names(res[[i]]) <- paste(i, row.names(res[[i]]), sep="_")    #I don't know what exactly this does?
       dfD2[i,2] <- as.numeric(row.names(T2[i,]))
     }
+    
   }
   stopCluster(cl)
   #Get rid of problem scenarios
@@ -154,64 +162,80 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   
   #assign event types ---
   stmp$LEV2 <- stmp$LEV1
-
+  
   #get contraction events
   id.stab1 <- unique(stmp$ID1[which(stmp$LEV1 == "STBL")])
   stmp$LEV2[which(stmp$LEV1 == "DISA" & stmp$ID1 %in% id.stab1)] <- "CONT"
-
+  
   #get expansion events
   id.stab2 <- unique(stmp$ID2[which(stmp$LEV1 == "STBL")])
   stmp$LEV2[which(stmp$LEV1 == "GENR" & stmp$ID2 %in% id.stab2)] <- "EXPN"
-
+  
   #Delineate contiguous bases for groups
   stmp$TMP <- 1
   if(length(stmp) > 1) {
-  nbl <- poly2nb(stmp)
-  for(i in 1:length(stmp)) {
-    nbl[[i]] <- c(unlist(nbl[i]), i)
+    nbl <- poly2nb(stmp)
+    for(i in 1:length(stmp)) {
+      nbl[[i]] <- c(unlist(nbl[i]), i)
     }
-  stmp$TMP <- n.comp.nb(nbl)$comp.id
+    stmp$TMP <- n.comp.nb(nbl)$comp.id
   }
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
+  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                       max = length(gdInd), # Maximum value of the progress bar
+                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                       width = 50,   # Progress bar width. Defaults to getOption("width")
+                       char = "=")   # Character used to create the bar
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
   for(i in gdInd) {
     event1 <- stmp$LEV2[i]
     #find D of all appropriate polys
     dists <- vector(length=length(stmp), mode="numeric")
     dists[] <- NA
-    for(j in 1:length(stmp)) {
+    stmp <- sf::st_as_sf(stmp)
+    
+    dists <- foreach(j = 1:nrow(stmp))%dopar%{
+      
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
-      if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- gDistance(stmp[j,], stmp[i,])}
-      }
+      if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- sf::st_distance(stmp[j,], stmp[i,])}
+    }
+    sf::as_Spatial(stmp)
+    dists[sapply(dists, is.null)] <- NA
+    dists <- unlist(dists)
     #sort by D then extract if below dc value
     if (min(dists,na.rm=T) <= dc){
       minInd <- which(dists == min(dists, na.rm=T))[1]
       event2 <- stmp$LEV2[minInd]
       if (event1 == "DISA"){
         tempLev[i] <- switch(event2,
-          GENR = "DISP1",
-          EXPN = "CONV",
-          CONT = "CONC",
-          STBL = "CONC")
-        }
+                             GENR = "DISP1",
+                             EXPN = "CONV",
+                             CONT = "CONC",
+                             STBL = "CONC")
+      }
       else {
         tempLev[i] <- switch(event2,
-          DISA = "DISP2",
-          EXPN = "FRAG",
-          CONT = "DIVR",
-          STBL = "CONC")
-        }
+                             DISA = "DISP2",
+                             EXPN = "FRAG",
+                             CONT = "DIVR",
+                             STBL = "CONC")
+      }
       #Group movement event into appropriate contiguous group
       stmp$TMP[i] <- stmp$TMP[minInd]
-      }
     }
+    setTxtProgressBar(pb, i)
+  }
+  stopCluster(cl)
+  
   stmp$LEV3 <- tempLev
   #Rename groups so there are no gaps
   grps <- unique(stmp$TMP)
   for (i in 1:length(grps)){
     stmp$TMP[which(stmp$TMP == grps[i])] <- i
-    }
+  }
   #Label Groups with Multi-Stable events as union or division
   stmp$LEV4 <- 'N/A'
   for (grp in unique(stmp$TMP)){
@@ -221,9 +245,9 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
       if (length(unique(stmp$ID2[ind])) == 1){stmp$LEV4[ind.grp] <- "UNION"}
       else if (length(unique(stmp$ID1[ind])) == 1){stmp$LEV4[ind.grp] <- "DIVISION"}
       else {stmp$LEV4[ind.grp] <- "BOTH"}
-      }
     }
-
+  }
+  
   #Delete TMP column and make a GROUP column
   stmp$GROUP <- stmp$TMP
   stmp@data <- stmp@data[,-5]
@@ -233,13 +257,13 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   stmp <- spChFIDs(stmp,as.character(seq(0,(length(stmp)-1))))
   #Create a polygon area column
   stmp$AREA <- gArea(stmp,byid=TRUE)
-
+  
   #directional analysis
   if (direction==TRUE){stmp <- stamp.direction(stmp,...)}
   #distance analysis
   if (distance==TRUE){stmp <- stamp.distance(stmp,...)}
-
+  
   #output
   return(stmp)
-  }
+}
 #-------------- END of stamp ---------------------------------------------------

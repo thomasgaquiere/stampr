@@ -21,9 +21,10 @@ Imports:
     spdep,
     grDevices,
     methods,
+    foreach,
     parallel,
     doParallel,
-    foreach
+    sf
 Suggests:
     igraph
 RoxygenNote: 7.2.1
