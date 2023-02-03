@@ -202,7 +202,7 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
       if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- sf::st_distance(stmp[j,], stmp[i,])}
     }
-    sf::as_Spatial(stmp)
+    stmp <- sf::as_Spatial(stmp)
     dists[sapply(dists, is.null)] <- NA
     dists <- unlist(dists)
     #sort by D then extract if below dc value
