@@ -1,12 +1,14 @@
 # ---- roxygen documentation ----
 #
-#' @title Spatial temporal analysis of moving polygons
-#'@import doParallel
+#' @title Spatial temporal analysis of moving polygons - terra version
+#'@import tidyterra
+#'@import terra
 #'@import parallel
+#'@import doParallel
 #'@import foreach
-#'@import sf
+#'@import spdep
 #' @description
-#' This function generates a \code{SpatialPolygonsDataFrame} that can be used for spatial temporal analysis of moving polygons
+#' This function generates a \code{SpatVector} that can be used for spatial temporal analysis of moving polygons
 #' as described in the paper Robertson et al. (2007).
 #'
 #' @details
@@ -32,8 +34,8 @@
 #'  
 #'  Note also that there must be a globally unique \code{ID} column in each data frame passed to the stamp function
 #'
-#' @param T1 a \code{SpatialPolygonsDataFrame} object of polygons from time 1.
-#' @param T2 a \code{SpatialPolygonsDataFrame} object of polygons from time 2.
+#' @param T1 a \code{SpatVector} object of polygons from time 1.
+#' @param T2 a \code{SpatVector} object of polygons from time 2.
 #' @param dc spatial distance threshold for determining groupings (see \bold{Details}) in appropriate units.
 #' @param direction logical, whether or not to perform directional analysis. See documentation for
 #'    \code{stamp.direction} for further details.
@@ -69,43 +71,38 @@
 
 stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
   # intersection b/w T1 and T2
-  if (!exists("ID", T1@data))
+  if (!'ID' %in% names(T1))
     stop("Need a unique 'ID' column.")
   
-  if (!exists("ID", T2@data))
+  if (!'ID' %in% names(T2))
     stop("Need a unique 'ID' column.")
   
-  row.names(T1) <- as.character(T1$ID)
-  row.names(T2) <- as.character(T2$ID)
-  pI <- gIntersection(T1,T2,byid=TRUE,drop_lower_td=TRUE)
-  if (!is.null(pI)){
-    #this assumes row numbers are numeric
-    dfI <- data.frame(matrix(as.numeric(unlist(sapply(row.names(pI),strsplit, " "))),ncol=2, byrow=TRUE))
-    names(dfI) <- c("ID1","ID2")
-    #dfI <- dfI[complete.cases(dfI),]
-    pI <- SpatialPolygonsDataFrame(pI,data=dfI,match.ID=FALSE)
+  T1 <- rename(T1, 'ID1' = 'ID')
+  T2 <- rename(T2, 'ID2'= 'ID')
+  
+  pI <- terra::intersect(T1, T2)
+  
+  
+  if (!is.null(pI)) {
     pI$LEV1 <- "STBL"
-    row.names(pI) <- paste("STBL",seq(1:length(pI)),sep="")
   } 
   
+  
   #T1 difference
-  res <- vector(mode="list", length=length(slot(T1, "polygons")))
+  #res <- list()
   dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
-  cl <- makeCluster(cores)
-  registerDoParallel(cl)
-  res <- foreach(i =1:length(seq(along=res))) %dopar%{
-    gd <- rgeos::gDifference(T1[i,],T2,drop_lower_td=TRUE)
-    res[[i]] <- gd 
-    
-  }
+  
+  res <- terra::erase(T1,T2)
+  
+  
+  
   for (i in seq(along=res)) {
-    if (!is.null(res[[i]])){                                          
-      row.names(res[[i]]) <- paste(i, row.names(res[[i]]), sep="_")    #I don't know what exactly this does?
-      dfD1[i,1] <- as.numeric(row.names(T1[i,]))
+    if (!is.null(res[i])){                                          
+      dfD1[i,1] <- res[i]$ID1
     }}
   
-  stopCluster(cl)
+  
   #Get rid of problem scenarios
   ind <- which(is.na(dfD1$ID1) & is.na(dfD1$ID2))
   if (length(ind) > 0){
@@ -114,32 +111,29 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   
   res1 <- res[!sapply(res, is.null)]
   pD1 <- NULL
-  #if (!is.null(res1)){
+  
   if (length(res1)>0){
-    out1 <- do.call("rbind", res1)
-    pD1 <- SpatialPolygonsDataFrame(as(out1,"SpatialPolygons"), data=dfD1, match.ID = FALSE)
+    
+    pD1 <- res1
     pD1$LEV1 <- "DISA"
-    row.names(pD1) <- paste("DISA",seq(1:length(pD1)),sep="")
+    
   }
   
   #T2 difference
-  res <- vector(mode="list", length=length(slot(T2, "polygons")))
+  
   dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
-  cl <- makeCluster(cores)
-  registerDoParallel(cl)
-  res <- foreach(i= 1:length(seq(along=res))) %dopar%{
-    gd <- rgeos::gDifference(T2[i,],T1,drop_lower_td=TRUE)
-    res[[i]] <- gd
-  }
+  
+  res <- terra::erase(T2, T1)
+  
   for (i in seq(along=res)) {
-    if (!is.null(res[[i]])){                                          
-      row.names(res[[i]]) <- paste(i, row.names(res[[i]]), sep="_")    #I don't know what exactly this does?
-      dfD2[i,2] <- as.numeric(row.names(T2[i,]))
+    if (!is.null(res[i])){                                          
+      
+      dfD2[i,2] <- res[i,]$ID2
     }
     
   }
-  stopCluster(cl)
+  
   #Get rid of problem scenarios
   ind <- which(is.na(dfD2$ID1) & is.na(dfD2$ID2))
   if (length(ind) > 0){
@@ -151,14 +145,15 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   pD2 <- NULL
   #if (!is.null(res1)){
   if (length(res1) > 0){
-    out1 <- do.call("rbind", res1)
-    pD2 <- SpatialPolygonsDataFrame(as(out1,"SpatialPolygons"), data=dfD2, match.ID = FALSE)
+    #ouT1 <- do.call("rbind", res1)
+    pD2 <- res1
     pD2$LEV1 <- "GENR"
-    row.names(pD2) <- paste("GENR",seq(1:length(pD2)),sep="")
+    #row.names(pD2) <- paste("GENR",seq(1:length(pD2)),sep="")
   }
   
   #Piece them together
-  stmp <- do.call('rbind',c(pD1,pI,pD2))
+  stmp <- rbind(pD1,pI,pD2)
+  #stmp <- as.data.frame(stmp)
   
   #assign event types ---
   stmp$LEV2 <- stmp$LEV1
@@ -171,6 +166,7 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   id.stab2 <- unique(stmp$ID2[which(stmp$LEV1 == "STBL")])
   stmp$LEV2[which(stmp$LEV1 == "GENR" & stmp$ID2 %in% id.stab2)] <- "EXPN"
   
+  stmp <- as(stmp, "Spatial")
   #Delineate contiguous bases for groups
   stmp$TMP <- 1
   if(length(stmp) > 1) {
@@ -180,6 +176,8 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
     }
     stmp$TMP <- n.comp.nb(nbl)$comp.id
   }
+  stmp <- terra::vect(stmp)
+  terra::crs(stmp) <- terra::crs(T1)
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
@@ -190,34 +188,42 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
                        char = "=")   # Character used to create the bar
   cl <- makeCluster(cores)
   registerDoParallel(cl)
+  
+  stmpL <- length(stmp)
+  
   for(i in gdInd) {
-    event1 <- stmp$LEV2[i]
-    #find D of all appropriate polys
-    dists <- vector(length=length(stmp), mode="numeric")
-    dists[] <- NA
-    stmp <- sf::st_as_sf(stmp)
     
-    dists <- foreach(j = 1:nrow(stmp)) %dopar% {
+    evenT1 <- stmp$LEV2[i]
+    #find D of all appropriate polys
+    #dists <- vector(length=length(stmp), mode="numeric")
+    # dists[] <- NA
+    #stmp <- sf::st_as_sf(stmp)
+    stmp <- terra::wrap(stmp)
+    
+    dists<- foreach(j = 1:stmpL, .packages = 'terra') %dopar% {
+      
+      stmp <- terra::unwrap(stmp)
       
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
-      if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- sf::st_distance(stmp[j,], stmp[i,])}
+      if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- terra::distance(stmp[j], stmp[i])}
     }
-    stmp <- sf::as_Spatial(stmp)
+    stmp <- terra::unwrap(stmp)
+    #stmp <- sf::as_Spatial(stmp)
     dists[sapply(dists, is.null)] <- NA
     dists <- unlist(dists)
     #sort by D then extract if below dc value
     if (min(dists,na.rm=T) <= dc){
       minInd <- which(dists == min(dists, na.rm=T))[1]
-      event2 <- stmp$LEV2[minInd]
-      if (event1 == "DISA"){
-        tempLev[i] <- switch(event2,
+      evenT2 <- stmp$LEV2[minInd]
+      if (evenT1 == "DISA"){
+        tempLev[i] <- switch(evenT2,
                              GENR = "DISP1",
                              EXPN = "CONV",
                              CONT = "CONC",
                              STBL = "CONC")
       }
       else {
-        tempLev[i] <- switch(event2,
+        tempLev[i] <- switch(evenT2,
                              DISA = "DISP2",
                              EXPN = "FRAG",
                              CONT = "DIVR",
@@ -229,6 +235,7 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
     setTxtProgressBar(pb, i)
   }
   stopCluster(cl)
+  
   
   stmp$LEV3 <- tempLev
   #Rename groups so there are no gaps
@@ -248,20 +255,27 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
     }
   }
   
+  
   #Delete TMP column and make a GROUP column
   stmp$GROUP <- stmp$TMP
-  stmp@data <- stmp@data[,-5]
+  #stmp[stmp$TMP]
+  #stmp@data <- stmp@data[,-5]
   #sort by group column
-  stmp <- stmp[order(stmp$GROUP),]
+  #stmp <- stmp[order(stmp$GROUP),]
   #rename FID's
-  stmp <- spChFIDs(stmp,as.character(seq(0,(length(stmp)-1))))
+  stmp <- select(stmp, 'x', 'y', 'ID1', 'ID2', 'LEV1', 'LEV2', 'LEV3', 'LEV4', 'GROUP')
+  #stmp <- spChFIDs(stmp,as.character(seq(0,(length(stmp)-1))))
   #Create a polygon area column
-  stmp$AREA <- gArea(stmp,byid=TRUE)
+  #stmp$AREA <- gArea(stmp,byid=TRUE)
+  stmp$AREA <- terra::expanse(stmp)
+  
+  
+  # others functions not modified yet
   
   #directional analysis
-  if (direction==TRUE){stmp <- stamp.direction(stmp,...)}
+  #if (direction==TRUE){stmp <- stamp.direction(stmp,...)}
   #distance analysis
-  if (distance==TRUE){stmp <- stamp.distance(stmp,...)}
+  #if (distance==TRUE){stmp <- stamp.distance(stmp,...)}
   
   #output
   return(stmp)

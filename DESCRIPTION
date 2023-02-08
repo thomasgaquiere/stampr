@@ -24,7 +24,8 @@ Imports:
     foreach,
     parallel,
     doParallel,
-    sf
+    tidyterra,
+    terra
 Suggests:
     igraph
 RoxygenNote: 7.2.1
