@@ -1,7 +1,7 @@
 # ---- roxygen documentation ----
 #
 #' @title Spatial temporal analysis of moving polygons (terra version)
-#'@import tidyterra rename select
+#'@importFrom tidyterra rename select
 #'@import terra
 #'@import parallel
 #'@import doParallel
