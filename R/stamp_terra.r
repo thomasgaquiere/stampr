@@ -1,7 +1,7 @@
 # ---- roxygen documentation ----
 #
-#' @title Spatial temporal analysis of moving polygons - terra version
-#'@import tidyterra
+#' @title Spatial temporal analysis of moving polygons (terra version)
+#'@import tidyterra rename select
 #'@import terra
 #'@import parallel
 #'@import doParallel
@@ -12,7 +12,7 @@
 #' as described in the paper Robertson et al. (2007).
 #'
 #' @details
-#'  The \code{stamp} function can be used to perform spatial temporal analysis of moving polygons (STAMP)
+#'  The \code{stamp_terra} function can be used to perform spatial temporal analysis of moving polygons (STAMP)
 #'  as outlined in the paper by Robertson et al., (2007). Polygon movement "groups" are delineated based on
 #'  polygon connectedness defined by the distance threshold \code{dc}. That is, if polygon
 #'  boundaries (in T1 or T2) are within distance \code{dc} of one another they will be designated
@@ -46,7 +46,7 @@
 #'
 #'
 #' @return
-#'  This function returns a \code{SpatialPolygonsDataFrame} with the following data columns:
+#'  This function returns a \code{SpatVector} with the following data columns:
 #'  \item{ID1}{Polygon ID from T1 polygons; \code{NA} if it did not exist,}
 #'  \item{ID2}{Polygon ID from T2 polygons; \code{NA} if it did not exist,}
 #'  \item{LEV1}{Level 1 STAMP designation,}
@@ -63,13 +63,13 @@
 #'  Robertson, C., Nelson, T., Boots, B., and Wulder, M. (2007) STAMP: Spatial-temporal analysis of moving polygons.
 #'  \emph{Journal of Geographical Systems}, 9:207-227.
 #'
-#' @keywords stamp
+#' @keywords stamp_terra
 #' @seealso stamp.direction stamp.distance stamp.shape stamp.map stamp.group.summary
 #' @export
 #
 # ---- End of Documentation ----
 
-stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
+stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
   # intersection b/w T1 and T2
   if (!'ID' %in% names(T1))
     stop("Need a unique 'ID' column.")
@@ -193,21 +193,23 @@ stamp <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){
   
   for(i in gdInd) {
     
+    
+    
     evenT1 <- stmp$LEV2[i]
     #find D of all appropriate polys
     #dists <- vector(length=length(stmp), mode="numeric")
-    # dists[] <- NA
+     #dists[] <- NA
     #stmp <- sf::st_as_sf(stmp)
-    stmp <- terra::wrap(stmp)
+    stmp <- wrap(stmp)
     
-    dists<- foreach(j = 1:stmpL, .packages = 'terra') %dopar% {
+    dists <-  foreach(j = 1:stmpL, .packages='terra') %dopar% {
       
-      stmp <- terra::unwrap(stmp)
+      stmp <- unwrap(stmp)
       
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
-      if (stmp$LEV2[i] != stmp$LEV2[j]){dists[j] <- terra::distance(stmp[j], stmp[i])}
+      if (stmp$LEV2[i] != stmp$LEV2[j]){ distance(stmp[j], stmp[i])}
     }
-    stmp <- terra::unwrap(stmp)
+    stmp <- unwrap(stmp)
     #stmp <- sf::as_Spatial(stmp)
     dists[sapply(dists, is.null)] <- NA
     dists <- unlist(dists)
