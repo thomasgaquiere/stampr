@@ -1,7 +1,9 @@
 # ---- roxygen documentation ----
 #
 #' @title Spatial temporal analysis of moving polygons (terra version)
-#'@importFrom tidyterra rename select
+#'@importFrom tidyterra rename
+#'@importFrom sf st_as_sf st_distance st_area
+#'@importFrom dplyr select
 #'@import terra
 #'@import parallel
 #'@import doParallel
@@ -153,7 +155,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   #Piece them together
   stmp <- rbind(pD1,pI,pD2)
-  stmp <- as(stmp, "Spatial")
+  stmp <- st_as_sf(stmp)
   #stmp <- as.data.frame(stmp)
   
   #assign event types ---
@@ -169,6 +171,8 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   
   #Delineate contiguous bases for groups
+  
+  #stmp <- as_Spatial(stmp)
   stmp$TMP <- 1
   if(length(stmp) > 1) {
     nbl <- poly2nb(stmp)
@@ -177,8 +181,9 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     }
     stmp$TMP <- n.comp.nb(nbl)$comp.id
   }
-  stmp <- terra::vect(stmp)
-  terra::crs(stmp) <- terra::crs(T1)
+  #stmp <- st_as_sf(stmp)
+ # stmp <- terra::vect(stmp)
+  #terra::crs(stmp) <- terra::crs(T1)
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
@@ -201,16 +206,16 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     #dists <- vector(length=length(stmp), mode="numeric")
      #dists[] <- NA
     #stmp <- sf::st_as_sf(stmp)
-    stmp <- wrap(stmp)
+    #stmp <- wrap(stmp)
     
-    dists <-  foreach(j = 1:stmpL, .packages='terra') %dopar% {
+    dists <-  foreach(j = 1:stmpL, .packages='sf') %dopar% {
       
-      stmp <- unwrap(stmp)
+      #stmp <- unwrap(stmp)
       
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
-      if (stmp$LEV2[i] != stmp$LEV2[j]){ distance(stmp[j], stmp[i])}
+      if (stmp$LEV2[i] != stmp$LEV2[j]){ st_distance(stmp[j], stmp[i])}
     }
-    stmp <- unwrap(stmp)
+    #stmp <- unwrap(stmp)
     #stmp <- sf::as_Spatial(stmp)
     dists[sapply(dists, is.null)] <- NA
     dists <- unlist(dists)
@@ -270,7 +275,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #stmp <- spChFIDs(stmp,as.character(seq(0,(length(stmp)-1))))
   #Create a polygon area column
   #stmp$AREA <- gArea(stmp,byid=TRUE)
-  stmp$AREA <- terra::expanse(stmp)
+  stmp$AREA <- st_area(stmp)
   
   
   # others functions not modified yet

@@ -25,7 +25,9 @@ Imports:
     parallel,
     doParallel,
     tidyterra,
-    terra
+    terra,
+    sf,
+    dplyr
 Suggests:
     igraph
 RoxygenNote: 7.2.1
