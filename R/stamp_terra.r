@@ -195,7 +195,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   cl <- makeCluster(cores)
   registerDoParallel(cl)
   
-  stmpL <- length(stmp)
+  #stmpL <- nrow(stmp)
   
   for(i in gdInd) {
     
@@ -204,16 +204,16 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     evenT1 <- stmp$LEV2[i]
     #find D of all appropriate polys
     #dists <- vector(length=length(stmp), mode="numeric")
-     #dists[] <- NA
+    #dists[] <- NA
     #stmp <- sf::st_as_sf(stmp)
     #stmp <- wrap(stmp)
     
-    dists <-  foreach(j = 1:stmpL, .packages='sf') %dopar% {
+    dists <-  foreach(j = 1:nrow(stmp), .packages='sf') %dopar% {
       
       #stmp <- unwrap(stmp)
       
       #Do not include nearest GEN-GEN or DIS-DIS as they do not change names
-      if (stmp$LEV2[i] != stmp$LEV2[j]){ st_distance(stmp[j], stmp[i])}
+      if (stmp$LEV2[i] != stmp$LEV2[j]){ st_distance(stmp[j,], stmp[i,])}
     }
     #stmp <- unwrap(stmp)
     #stmp <- sf::as_Spatial(stmp)
