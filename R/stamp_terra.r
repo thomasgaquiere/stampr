@@ -153,6 +153,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   #Piece them together
   stmp <- rbind(pD1,pI,pD2)
+  stmp <- as(stmp, "Spatial")
   #stmp <- as.data.frame(stmp)
   
   #assign event types ---
@@ -166,7 +167,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   id.stab2 <- unique(stmp$ID2[which(stmp$LEV1 == "STBL")])
   stmp$LEV2[which(stmp$LEV1 == "GENR" & stmp$ID2 %in% id.stab2)] <- "EXPN"
   
-  stmp <- as(stmp, "Spatial")
+  
   #Delineate contiguous bases for groups
   stmp$TMP <- 1
   if(length(stmp) > 1) {
