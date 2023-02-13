@@ -188,7 +188,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
-  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+  pb <- txtProgressBar(min = min(gdInd),      # Minimum value of the progress bar
                        max = length(gdInd), # Maximum value of the progress bar
                        style = 3,    # Progress bar style (also available style = 1 and style = 2)
                        width = 50,   # Progress bar width. Defaults to getOption("width")
