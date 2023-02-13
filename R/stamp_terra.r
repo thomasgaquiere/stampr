@@ -82,7 +82,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   T1 <- rename(T1, 'ID1' = 'ID')
   T2 <- rename(T2, 'ID2'= 'ID')
   
-  pI <- terra::intersect(T1, T2)
+  pI <- terra::intersect(T1, T2, sequential=TRUE)
   
   
   if (!is.null(pI)) {
@@ -95,7 +95,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
   
-  res <- terra::erase(T1,T2)
+  res <- terra::erase(T1,T2, sequential=TRUE)
   
   
   
@@ -194,7 +194,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
                        width = 50,   # Progress bar width. Defaults to getOption("width")
                        char = "=")   # Character used to create the bar
   cl <- makeCluster(cores)
-  registerDoParallel(cl)
+  registerDoParallel(cl)c
   
   #stmpL <- nrow(stmp)
   
