@@ -272,7 +272,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #sort by group column
   #stmp <- stmp[order(stmp$GROUP),]
   #rename FID's
-  stmp <- select(stmp, 'x', 'y', 'ID1', 'ID2', 'LEV1', 'LEV2', 'LEV3', 'LEV4', 'GROUP')
+  stmp <- select(stmp, 'geometry', 'ID1', 'ID2', 'LEV1', 'LEV2', 'LEV3', 'LEV4', 'GROUP')
   #stmp <- spChFIDs(stmp,as.character(seq(0,(length(stmp)-1))))
   #Create a polygon area column
   #stmp$AREA <- gArea(stmp,byid=TRUE)
