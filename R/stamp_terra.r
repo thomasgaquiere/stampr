@@ -82,7 +82,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   T1 <- rename(T1, 'ID1' = 'ID')
   T2 <- rename(T2, 'ID2'= 'ID')
   
-  pI <- terra::intersect(T1, T2, sequential=TRUE)
+  pI <- terra::intersect(T1, T2)
   
   
   if (!is.null(pI)) {
