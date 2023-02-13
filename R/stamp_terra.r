@@ -155,6 +155,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   #Piece them together
   stmp <- rbind(pD1,pI,pD2)
+  
   stmp <- st_as_sf(stmp)
   #stmp <- as.data.frame(stmp)
   
@@ -174,15 +175,15 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   #stmp <- as_Spatial(stmp)
   stmp$TMP <- 1
-  if(length(stmp) > 1) {
+  if(nrow(stmp) > 1) {
     nbl <- poly2nb(stmp)
-    for(i in 1:length(stmp)) {
+    for(i in 1:nrow(stmp)) {
       nbl[[i]] <- c(unlist(nbl[i]), i)
     }
     stmp$TMP <- n.comp.nb(nbl)$comp.id
   }
   #stmp <- st_as_sf(stmp)
- # stmp <- terra::vect(stmp)
+  #stmp <- terra::vect(stmp)
   #terra::crs(stmp) <- terra::crs(T1)
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
