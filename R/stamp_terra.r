@@ -194,7 +194,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
                        width = 50,   # Progress bar width. Defaults to getOption("width")
                        char = "=")   # Character used to create the bar
   cl <- makeCluster(cores)
-  registerDoParallel(cl)c
+  registerDoParallel(cl)
   
   #stmpL <- nrow(stmp)
   
