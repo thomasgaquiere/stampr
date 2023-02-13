@@ -95,15 +95,34 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
   
-  res <- terra::erase(T1,T2, sequential=TRUE)
   
+  T1 <- st_as_sf(T1)
+  T2 <- st_as_sf(T2)
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
+
+ 
+  res <- foreach(i =1:length(T1)) %dopar% {
+    sf::st_difference(T1[i,],T2)
+    
+    
+  }
   
+  for (i in 1:length(T1)) {
+    
+  if (nrow(res[[i]])>0){                                          
+    dfD1[i,1] <- res[[i]]$ID1
+  }
+  }
   
-  for (i in seq(along=res)) {
-    if (!is.null(res[i])){                                          
-      dfD1[i,1] <- res[i]$ID1
-    }}
+  for (i in length(res)) {
+    if (nrow(res[[i]])<1){                                          
+      res[[i]] <- NULL
+    }
+  }
+ 
   
+  stopCluster(cl)
   
   #Get rid of problem scenarios
   ind <- which(is.na(dfD1$ID1) & is.na(dfD1$ID2))
@@ -116,7 +135,9 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   if (length(res1)>0){
     
-    pD1 <- res1
+    out1 <- do.call("rbind", res1)
+    
+    pD1 <- out1
     pD1$LEV1 <- "DISA"
     
   }
@@ -125,16 +146,32 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
+ 
+  cl <- makeCluster(cores)
+  registerDoParallel(cl)
   
-  res <- terra::erase(T2, T1)
   
-  for (i in seq(along=res)) {
-    if (!is.null(res[i])){                                          
-      
-      dfD2[i,2] <- res[i,]$ID2
-    }
+  res <- foreach(i =1:length(T2)) %dopar% {
+    
+    sf::st_difference(T2[i,],T1)
+    
     
   }
+  
+  for (i in 1:length(T2)) {
+    
+    if (nrow(res[[i]])>0){                                          
+      dfD2[i,2] <- res[[i]]$ID2
+    }
+  }
+  
+  for (i in length(res)) {
+    if (nrow(res[[i]])<1){                                          
+      res[[i]] <- NULL
+    }
+  }
+  
+  stopCluster(cl)
   
   #Get rid of problem scenarios
   ind <- which(is.na(dfD2$ID1) & is.na(dfD2$ID2))
@@ -147,8 +184,8 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   pD2 <- NULL
   #if (!is.null(res1)){
   if (length(res1) > 0){
-    #ouT1 <- do.call("rbind", res1)
-    pD2 <- res1
+    out1 <- do.call("rbind", res1)
+    pD2 <- out1
     pD2$LEV1 <- "GENR"
     #row.names(pD2) <- paste("GENR",seq(1:length(pD2)),sep="")
   }
