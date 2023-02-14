@@ -2,8 +2,8 @@
 #
 #' @title Spatial temporal analysis of moving polygons (terra version)
 #'@importFrom tidyterra rename
-#'@importFrom sf st_as_sf st_distance st_area
-#'@importFrom dplyr select
+#'@importFrom sf st_as_sf st_distance st_area st_difference st_union st_combine
+#'@importFrom dplyr select bind_rows
 #'@import terra
 #'@import parallel
 #'@import doParallel
@@ -84,7 +84,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   pI <- terra::intersect(T1, T2)
   
-  
+  pI <- st_as_sf(pI)
   if (!is.null(pI)) {
     pI$LEV1 <- "STBL"
   } 
@@ -92,7 +92,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   #T1 difference
   #res <- list()
-  dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
+  #dfD1 <- data.frame(ID1 = rep(NA,length(T1)),ID2 = rep(NA,length(T1)))
   #This is slow, can we improve?
   
   
@@ -103,34 +103,18 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
 
  
   res <- foreach(i =1:length(T1)) %dopar% {
-    sf::st_difference(T1[i,],T2)
+    sf::st_difference(T1[i,],sf::st_union(sf::st_combine(T2)))
     
-    
   }
-  
-  for (i in 1:length(T1)) {
-    
-  if (nrow(res[[i]])>0){                                          
-    dfD1[i,1] <- res[[i]]$ID1
-  }
-  }
-  
-  for (i in length(res)) {
-    if (nrow(res[[i]])<1){                                          
-      res[[i]] <- NULL
-    }
-  }
- 
-  
   stopCluster(cl)
   
-  #Get rid of problem scenarios
-  ind <- which(is.na(dfD1$ID1) & is.na(dfD1$ID2))
-  if (length(ind) > 0){
-    dfD1 <- dfD1[-ind,]
+  for (i in seq(along=res)) {
+    
+    if (base::nrow(res[[i]])<1){res[[i]] <- NA}
+    
   }
-  
-  res1 <- res[!sapply(res, is.null)]
+ 
+  res1 <- res[!is.na(res)]
   pD1 <- NULL
   
   if (length(res1)>0){
@@ -139,12 +123,13 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     
     pD1 <- out1
     pD1$LEV1 <- "DISA"
+    #pD1$ID2 <- NA
     
   }
   
   #T2 difference
   
-  dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
+  #dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
  
   cl <- makeCluster(cores)
@@ -153,34 +138,23 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   
   res <- foreach(i =1:length(T2)) %dopar% {
     
-    sf::st_difference(T2[i,],T1)
+    sf::st_difference(T2[i,],sf::st_union(sf::st_combine(T1)))
     
     
   }
   
-  for (i in 1:length(T2)) {
+  for (i in seq(along=res)) {
     
-    if (nrow(res[[i]])>0){                                          
-      dfD2[i,2] <- res[[i]]$ID2
-    }
+    if (base::nrow(res[[i]])<1){res[[i]] <- NA}
+    
   }
   
-  for (i in length(res)) {
-    if (nrow(res[[i]])<1){                                          
-      res[[i]] <- NULL
-    }
-  }
+ 
   
   stopCluster(cl)
   
-  #Get rid of problem scenarios
-  ind <- which(is.na(dfD2$ID1) & is.na(dfD2$ID2))
-  if (length(ind) > 0){
-    dfD2 <- dfD2[-ind,]
-  }
+  res1 <- res[!is.na(res)]
   
-  
-  res1 <- res[!sapply(res, is.null)]
   pD2 <- NULL
   #if (!is.null(res1)){
   if (length(res1) > 0){
@@ -191,9 +165,9 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   }
   
   #Piece them together
-  stmp <- rbind(pD1,pI,pD2)
+  stmp <- dplyr::bind_rows(pD1,pI,pD2)
   
-  stmp <- st_as_sf(stmp)
+  #stmp <- st_as_sf(stmp)
   #stmp <- as.data.frame(stmp)
   
   #assign event types ---
@@ -278,7 +252,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
       #Group movement event into appropriate contiguous group
       stmp$TMP[i] <- stmp$TMP[minInd]
     }
-    setTxtProgressBar(pb, i)
+    #setTxtProgressBar(pb, i)
   }
   stopCluster(cl)
   
