@@ -103,7 +103,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   registerDoParallel(cl)
 
  
-  res <- foreach(i =1:length(T1)) %dopar% {
+  res <- foreach(i =1:nrow(T1)) %dopar% {
     sf::st_difference(T1[i,],sf::st_union(sf::st_combine(T2)))
     
   }
@@ -137,7 +137,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   registerDoParallel(cl)
   
   
-  res <- foreach(i =1:length(T2)) %dopar% {
+  res <- foreach(i =1:nrow(T2)) %dopar% {
     
     sf::st_difference(T2[i,],sf::st_union(sf::st_combine(T1)))
     
@@ -198,6 +198,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #stmp <- terra::vect(stmp)
   #terra::crs(stmp) <- terra::crs(T1)
   #Label all other LEV2 movement types...
+  
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
   
