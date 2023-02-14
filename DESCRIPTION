@@ -27,7 +27,8 @@ Imports:
     tidyterra,
     terra,
     sf,
-    dplyr
+    dplyr,
+    progress
 Suggests:
     igraph
 RoxygenNote: 7.2.1

@@ -4,6 +4,7 @@
 #'@importFrom tidyterra rename
 #'@importFrom sf st_as_sf st_distance st_area st_difference st_union st_combine
 #'@importFrom dplyr select bind_rows
+#'@importFrom progress progress_bar
 #'@import terra
 #'@import parallel
 #'@import doParallel
@@ -199,11 +200,11 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #Label all other LEV2 movement types...
   gdInd <- which(stmp$LEV2 == "GENR" | stmp$LEV2 == "DISA")
   tempLev <- stmp$LEV2
-  pb <- txtProgressBar(min = min(gdInd),      # Minimum value of the progress bar
-                       max = length(gdInd), # Maximum value of the progress bar
-                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
-                       width = 50,   # Progress bar width. Defaults to getOption("width")
-                       char = "=")   # Character used to create the bar
+  
+  pb <- progress_bar$new(
+    format = "[:bar] :percent eta: :eta",
+    total = length(gdInd), clear = FALSE)
+  
   cl <- makeCluster(cores)
   registerDoParallel(cl)
   
@@ -252,7 +253,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
       #Group movement event into appropriate contiguous group
       stmp$TMP[i] <- stmp$TMP[minInd]
     }
-    #setTxtProgressBar(pb, i)
+    pb$tick()
   }
   stopCluster(cl)
   
