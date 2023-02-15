@@ -1,9 +1,9 @@
 # ---- roxygen documentation ----
 #
-#' @title Spatial temporal analysis of moving polygons (terra version)
-#'@importFrom tidyterra rename
-#'@importFrom sf st_as_sf st_distance st_area st_difference st_union st_combine
-#'@importFrom dplyr select bind_rows
+#'@title Spatial temporal analysis of moving polygons (sf version)
+#'@importFrom sf st_as_sf st_distance st_cast st_area st_difference st_union st_combine st_intersection st_collection_extract st_make_valid
+#'@importFrom dplyr select group_by summarise rename
+#'@importFrom  magrittr %>%
 #'@importFrom progress progress_bar
 #'@import terra
 #'@import parallel
@@ -15,7 +15,7 @@
 #' as described in the paper Robertson et al. (2007).
 #'
 #' @details
-#'  The \code{stamp_terra} function can be used to perform spatial temporal analysis of moving polygons (STAMP)
+#'  The \code{stamp_sf} function can be used to perform spatial temporal analysis of moving polygons (STAMP)
 #'  as outlined in the paper by Robertson et al., (2007). Polygon movement "groups" are delineated based on
 #'  polygon connectedness defined by the distance threshold \code{dc}. That is, if polygon
 #'  boundaries (in T1 or T2) are within distance \code{dc} of one another they will be designated
@@ -66,13 +66,13 @@
 #'  Robertson, C., Nelson, T., Boots, B., and Wulder, M. (2007) STAMP: Spatial-temporal analysis of moving polygons.
 #'  \emph{Journal of Geographical Systems}, 9:207-227.
 #'
-#' @keywords stamp_terra
+#' @keywords stamp_sf
 #' @seealso stamp.direction stamp.distance stamp.shape stamp.map stamp.group.summary
 #' @export
 #
 # ---- End of Documentation ----
 
-stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
+stamp_sf <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, ...){ 
   # intersection b/w T1 and T2
   if (!'ID' %in% names(T1))
     stop("Need a unique 'ID' column.")
@@ -83,9 +83,16 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   T1 <- rename(T1, 'ID1' = 'ID')
   T2 <- rename(T2, 'ID2'= 'ID')
   
-  pI <- terra::intersect(T1, T2)
+  T1 <- st_make_valid(T1) %>% st_cast('MULTIPOLYGON')
+  T2 <- st_make_valid(T2) %>% st_cast('MULTIPOLYGON')
   
-  pI <- st_as_sf(pI)
+  pI <- st_intersection(T1, T2) 
+  pI <- st_collection_extract(pI, "POLYGON") %>% group_by(ID1, ID2) %>% summarise(geometry=st_combine(geometry)) #to deal with geometry creation issue in st_intersection
+  
+  
+  pI <- select(pI,'ID1', 'ID2', 'geometry')
+  
+  #pI <- st_as_sf(pI)
   if (!is.null(pI)) {
     pI$LEV1 <- "STBL"
   } 
@@ -97,12 +104,12 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
   #This is slow, can we improve?
   
   
-  T1 <- st_as_sf(T1)
-  T2 <- st_as_sf(T2)
+  #T1 <- st_as_sf(T1)
+  #T2 <- st_as_sf(T2)
   cl <- makeCluster(cores)
   registerDoParallel(cl)
-
- 
+  
+  
   res <- foreach(i =1:nrow(T1)) %dopar% {
     sf::st_difference(T1[i,],sf::st_union(sf::st_combine(T2)))
     
@@ -114,7 +121,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     if (base::nrow(res[[i]])<1){res[[i]] <- NA}
     
   }
- 
+  
   res1 <- res[!is.na(res)]
   pD1 <- NULL
   
@@ -124,15 +131,17 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     
     pD1 <- out1
     pD1$LEV1 <- "DISA"
-    #pD1$ID2 <- NA
+    pD1$ID2 <- NA
     
   }
+  pD1 <- st_cast(pD1, to = 'MULTIPOLYGON' ) %>% select('ID1', 'ID2', 'geometry', 'LEV1')
+  
   
   #T2 difference
   
   #dfD2 <- data.frame(ID1 = rep(NA,length(T2)),ID2 = rep(NA,length(T2)))
   #This is slow, can we improve?
- 
+  
   cl <- makeCluster(cores)
   registerDoParallel(cl)
   
@@ -150,7 +159,7 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     
   }
   
- 
+  
   
   stopCluster(cl)
   
@@ -162,11 +171,13 @@ stamp_terra <- function(T1, T2, dc=0, direction=FALSE, distance=FALSE,cores=1, .
     out1 <- do.call("rbind", res1)
     pD2 <- out1
     pD2$LEV1 <- "GENR"
+    pD2$ID1 <- NA
     #row.names(pD2) <- paste("GENR",seq(1:length(pD2)),sep="")
   }
   
+  pD2 <- st_cast(pD2, to = 'MULTIPOLYGON' ) %>% select('ID1', 'ID2', 'geometry', 'LEV1')
   #Piece them together
-  stmp <- dplyr::bind_rows(pD1,pI,pD2)
+  stmp <- rbind(pD1,pI,pD2)
   
   #stmp <- st_as_sf(stmp)
   #stmp <- as.data.frame(stmp)

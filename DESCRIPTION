@@ -24,7 +24,7 @@ Imports:
     foreach,
     parallel,
     doParallel,
-    tidyterra,
+    magrittr,
     terra,
     sf,
     dplyr,
